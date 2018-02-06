@@ -207,6 +207,7 @@ class Api extends CI_Controller {
 			'jumlah_transaksi' 	=> $jumlah_transaksi,
 			'tanggal_transaksi'	=> $tanggal_transaksi,
 			'jenis_transaksi' 	=> $jenis_transaksi,
+			'created_at'		=> date('Y-m-d H:i:s'),
 		];
 		$this->global->create('transaksi', $data_transaksi);
 
@@ -262,7 +263,7 @@ class Api extends CI_Controller {
 	*	update status transaksi validasi transaksi
 	*	0. pending, 1. proses, 2. gagal, 3. berhasil
 	* INATRADE
-	hostname 10.30.30.43
+		hostname 10.30.30.43
 		user InatradeFE 
 		pass d3v3d1FE
 	*/
@@ -277,6 +278,7 @@ class Api extends CI_Controller {
 			
 			$data_transaksi_berhasil = [
 				'transaksi_id'	=> $id,
+				'created_at'	=> date('Y-m-d H:i:s'),				
 			];
 
 			$this->global->create('transaksi_berhasil',$data_transaksi_berhasil);
@@ -287,6 +289,7 @@ class Api extends CI_Controller {
 
 			$data_transaksi_gagal = [
 				'transaksi_id'	=> $id,
+				'created_at'	=> date('Y-m-d H:i:s'),
 			];
 
 			$this->global->create('transaksi_gagal',$data_transaksi_gagal);
@@ -302,6 +305,7 @@ class Api extends CI_Controller {
 
 		$data_total_wakaf = [
 			'total_wakaf'	=> $total_wakaf['total_wakaf'],
+			'created_at'	=> date('Y-m-d H:i:s'),
 		];
 
 		$this->global->create('total_wakaf', $data_total_wakaf);
@@ -315,6 +319,34 @@ class Api extends CI_Controller {
 			$response['error']	= FALSE;
 			$response['message']= 'Status Transaction has been updated!';
 		}
+
+		echo json_encode($response);
+	}
+
+	public function add_lpw_berita()
+	{
+		$user_id = $this->session->id;
+		$pegawai = $this->global->getCond('pegawai','*',['user_id'=>$user_id])->row_array(); 
+		$data_lpw = [
+			'pegawai_id'	=> $pegawai['id'],
+			'nomor_laporan'	=> $this->input->post('nomor_laporan'),
+			'jenis_laporan'	=> $this->input->post('jenis_laporan'),
+		];
+
+		$lpw_id = $this->global->create('laporan_pemberdayaan_wakaf',$data_lpw, TRUE);
+
+		$data_berita = [
+			'lpw_id'		=> $lpw_id,
+			'judul_berita'	=> $this->input->post('judul_berita'),
+			'isi_berita'	=> $this->input->post('isi'),
+			'tanggal'		=> $this->input->post('tanggal'),
+		];
+
+		$this->global->craete('berita', $data_berita);
+
+		$response['code']		= 200;
+		$response['error']		= FALSE;
+		$response['message']	= 'Success add laporan pemberdayaan wakaf dan berita!';
 
 		echo json_encode($response);
 	}
