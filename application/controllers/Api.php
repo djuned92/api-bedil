@@ -262,10 +262,6 @@ class Api extends CI_Controller {
 	/**
 	*	update status transaksi validasi transaksi
 	*	0. pending, 1. proses, 2. gagal, 3. berhasil
-	* INATRADE
-		hostname 10.30.30.43
-		user InatradeFE 
-		pass d3v3d1FE
 	*/
 	public function validasi_transaksi()
 	{
