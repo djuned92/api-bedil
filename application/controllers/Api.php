@@ -103,6 +103,8 @@ class Api extends CI_Controller {
         $config['mailpath'] = '/usr/sbin/sendmail';
         $config['mailtype'] = 'html';
         $config['charset'] = 'iso-8859-1';
+        // $config['mailtype'] = 'html';
+        // $config['charset']  = 'utf-8';
         $config['wordwrap'] = TRUE;
         $config['newline'] = "\r\n"; //use double quotes
         $this->email->initialize($config);
@@ -120,7 +122,7 @@ class Api extends CI_Controller {
 		$data_user = [
 			'username'	=> $username,
 			'password'	=> $password_hash,
-			'role'		=> 3,
+			'level_id'	=> 3,
 			'kode_aktivasi'	=> $this->random_aktivasi(5),
 		];
 
@@ -144,7 +146,7 @@ class Api extends CI_Controller {
 			$response['message']	= 'Failed registered!';
         } else {
         	$this->db->trans_commit();
-        	$user = $this->global->getCond('user','*',['username' => $username])->row_array();
+        	$user = $this->global->getCondJoin('user','user.kode_aktivasi, muwakif.email',['username' => $username],['muwakif'=>'user.id = muwakif.user_id'])->row_array();
         	$to_email   = $user['email'];
         	$message	= 'KODE AKTIVASI ANDA '.$user['kode_aktivasi'].'';
         	// send email
