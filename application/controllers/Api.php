@@ -18,12 +18,12 @@ class Api extends CI_Controller {
 				$muwakif = $this->global->getCond('muwakif','*',['user_id'=>$user['id']])->row_array();
 				// set session
 				$sess_data = [
-					'logged_in' => TRUE,
 					'id'		=> $user['id'],
 					'muwakif_id'=> $muwakif['id'],
 					'username'	=> $user['username'],
-					'level'		=> $user['lebel'],
+					'level'		=> $user['level_id'],
 					'_token' 	=> $_token,
+					'logged_in' => TRUE,
 				];
 				$this->session->set_userdata($sess_data);
 
@@ -56,8 +56,8 @@ class Api extends CI_Controller {
 		
 		if($id != NULL) {
 			// update last login
-			$data['last_login'] 	= date('Y-m-d H:i:s');
-			$data['_token'] 	= NULL;
+			// $data['last_login'] 	= date('Y-m-d H:i:s');
+			$data['_token'] 		= NULL;
 			(isset($user['id'])) ? $this->global->update('user', $data, array('id'=> $user['id'])) : '';
 
 			$response['code']  	= 200;
@@ -74,11 +74,11 @@ class Api extends CI_Controller {
 		$aktivasi = $this->global->getCond('user','*',['kode_aktivasi' => $kode_aktivasi]);
 		if($aktivasi->num_rows() > 0) {
 			$data = [
-				'status'	=> 1,
+				'status'	=> '1',
 			];
 
 			$this->global->update('user',$data, ['kode_aktivasi' => $kode_aktivasi]);
-			
+			// print_r($this->db->last_query());die();
 			$response['code'] = 200;
 			$response['error'] = FALSE;
 			$response['message'] = 'Aktivasi user berhasil';
@@ -92,23 +92,21 @@ class Api extends CI_Controller {
 
 	public function register()
 	{
-		$this->load->library('email');
-
-		// configure email setting
-		$config['protocol'] = 'smtp';
-        $config['smtp_host'] = 'ssl://smtp.gmail.com';
-        $config['smtp_port'] = '465';
-        $config['smtp_user'] = 'ahmaddjunaedi92@gmail.com'; //bangzafran445@gmail.com
-        $config['smtp_pass'] = 'djuned1!.,.,'; //bastol1234567 
-        $config['mailpath'] = '/usr/sbin/sendmail';
-        $config['mailtype'] = 'html';
-        $config['charset'] = 'iso-8859-1';
-        // $config['mailtype'] = 'html';
-        // $config['charset']  = 'utf-8';
-        $config['wordwrap'] = TRUE;
-        $config['newline'] = "\r\n"; //use double quotes
+		// print_r(phpinfo());die();
+        $this->load->library('email');
+		$config['protocol'] 	= 'smtp';
+        $config['smtp_host'] 	= 'ssl://smtp.gmail.com';
+        $config['smtp_port'] 	= '465';
+        $config['smtp_user'] 	= 'ahmaddjunaedi92@gmail.com'; //bangzafran445@gmail.com
+        $config['smtp_pass'] 	= 'djuned1!.,.,'; //bastol1234567
+        $config['smtp_crypto']	= 'security';
+        $config['smtp_timeout']	= 4;
+        // $config['mailpath']     = "/usr/sbin/sendmail"; // or "/usr/sbin/sendmail"
+        $config['mailtype'] 	= 'html';
+        $config['charset'] 		= 'iso-8859-1';
+        $config['wordwrap'] 	= TRUE;
+        $config['newline'] 		= "\r\n"; //use double quotes
         $this->email->initialize($config);
-
 		$this->db->trans_begin();
 		
 		$username = $this->input->post('username');
@@ -139,31 +137,37 @@ class Api extends CI_Controller {
 
 		$this->global->create('muwakif', $data_muwakif);
 
-		if ($this->db->trans_status() === FALSE) {
-            $this->db->trans_rollback();
-            $response['code']		= 501;
-			$response['error']		= FALSE;
-			$response['message']	= 'Failed registered!';
-        } else {
-        	$this->db->trans_commit();
-        	$user = $this->global->getCondJoin('user','user.kode_aktivasi, muwakif.email',['username' => $username],['muwakif'=>'user.id = muwakif.user_id'])->row_array();
-        	$to_email   = $user['email'];
-        	$message	= 'KODE AKTIVASI ANDA '.$user['kode_aktivasi'].'';
-        	// send email
-	        $this->email->from('ahmaddjunaedi92@gmail.com','Ahmad Djunaedi');
-	        $this->email->to($to_email);
-	        $this->email->subject('Aktivasi User');
-	        $this->email->message($message);
-        	
-        	if ( ! $this->email->send())
-			{
-			    $response['email_error'] = $this->email->print_debugger();
-			}
+		$user = $this->global->getCondJoin('user','user.kode_aktivasi, muwakif.email',
+											['username' => $username],
+											['muwakif'=>'user.id = muwakif.user_id'])->row_array();
+		$to_email   = $user['email'];
+		$message	= 'KODE AKTIVASI ANDA '.$user['kode_aktivasi'].'';
+		// send email
+		$this->email->from('ahmaddjunaedi92@gmail.com','Ahmad Djunaedi');
+		$this->email->to($to_email);
+		$this->email->subject('Aktivasi User');
+		$this->email->message($message);
 
-			$response['code']		= 200;
-			$response['error']		= FALSE;
-			$response['message']	= 'Success registered!';
-        }
+		if ( ! $this->email->send())
+		{
+			$response['code']	 = 400;
+			$response['error']   = TRUE;
+			$response['message'] = $this->email->print_debugger();
+		} else {
+			if ($this->db->trans_status() === FALSE) {
+	            $this->db->trans_rollback();
+	            
+	            $response['code']		= 501;
+				$response['error']		= FALSE;
+				$response['message']	= 'Failed registered!';
+	        } else {
+	        	$this->db->trans_commit();
+				
+				$response['code']		= 200;
+				$response['error']		= FALSE;
+				$response['message']	= 'Success registered!';
+	        }
+		}
 
 		echo json_encode($response);
 	}
@@ -195,6 +199,8 @@ class Api extends CI_Controller {
 			$response['error']		= TRUE;
 			$response['message']	= 'Trasaction not found!';			
 		}
+
+		echo json_encode($response);
 	}
 
 	public function add_transaksi()
@@ -223,7 +229,6 @@ class Api extends CI_Controller {
 	// upload bukti pembayaran send notif ke bag. keuangan
 	public function upload_bukti_transaksi()
 	{
-		// $this->load->library('upload', $config);
 		$this->load->library('upload');
 
 		$config['upload_path'] 		= './assets/images/transaksi/';
@@ -234,16 +239,16 @@ class Api extends CI_Controller {
 		$config['encrypt_name'] 	= TRUE;
 
 		$this->upload->initialize($config);
-		// print_r($this->upload->data());die();
 
 		if ( ! $this->upload->do_upload()){
 			$error = array('error' => $this->upload->display_errors());
 			$response['error'] = $error;
 		} else {
+			// print_r($this->upload->data());die();
 			$id = $this->input->post('id');
 
 			$data_transaksi = [
-				'bukti_transaksi'	=> $_FILES['userfile']['name'],
+				'bukti_transaksi'	=> $this->upload->data('file_name'),
 				'status'			=> 1,
 			];
 
