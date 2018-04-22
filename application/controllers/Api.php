@@ -2,7 +2,7 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 class Api extends CI_Controller {
-
+	
 	/**
 	* AUTH
 	*/
@@ -16,15 +16,24 @@ class Api extends CI_Controller {
 		if(!empty($user)) {
 			if(password_verify($password, $user['password'])) {
 				$muwakif = $this->global->getCond('muwakif','*',['user_id'=>$user['id']])->row_array();
+				$pegawai = $this->global->getCond('pegawai','*',['user_id'=>$user['id']])->row_array();
+
 				// set session
 				$sess_data = [
 					'id'		=> $user['id'],
-					'muwakif_id'=> $muwakif['id'],
+					// 'muwakif_id'=> $muwakif['id'],
 					'username'	=> $user['username'],
 					'level'		=> $user['level_id'],
 					'_token' 	=> $_token,
 					'logged_in' => TRUE,
 				];
+
+				if($user['level_id'] == 3) {
+					$sess_data['muwakif_id'] = $muwakif['id'];
+				} else {
+					$sess_data['pegawai_id'] = $pegawai['id'];
+				}
+
 				$this->session->set_userdata($sess_data);
 
 				$data['_token'] = ($_token != null) ? $_token : NULL;
@@ -99,8 +108,6 @@ class Api extends CI_Controller {
         $config['smtp_port'] 	= '465';
         $config['smtp_user'] 	= 'ahmaddjunaedi92@gmail.com'; //bangzafran445@gmail.com
         $config['smtp_pass'] 	= 'djuned1!.,.,'; //bastol1234567
-        $config['smtp_crypto']	= 'security';
-        $config['smtp_timeout']	= 4;
         // $config['mailpath']     = "/usr/sbin/sendmail"; // or "/usr/sbin/sendmail"
         $config['mailtype'] 	= 'html';
         $config['charset'] 		= 'iso-8859-1';
@@ -121,7 +128,7 @@ class Api extends CI_Controller {
 			'username'	=> $username,
 			'password'	=> $password_hash,
 			'level_id'	=> 3,
-			'kode_aktivasi'	=> $this->random_aktivasi(5),
+			'kode_aktivasi'	=> 'XYZ123',
 		];
 
 		$user_id = $this->global->create('user', $data_user, TRUE);
@@ -137,23 +144,23 @@ class Api extends CI_Controller {
 
 		$this->global->create('muwakif', $data_muwakif);
 
-		$user = $this->global->getCondJoin('user','user.kode_aktivasi, muwakif.email',
-											['username' => $username],
-											['muwakif'=>'user.id = muwakif.user_id'])->row_array();
-		$to_email   = $user['email'];
-		$message	= 'KODE AKTIVASI ANDA '.$user['kode_aktivasi'].'';
-		// send email
-		$this->email->from('ahmaddjunaedi92@gmail.com','Ahmad Djunaedi');
-		$this->email->to($to_email);
-		$this->email->subject('Aktivasi User');
-		$this->email->message($message);
+		// $user = $this->global->getCondJoin('user','user.kode_aktivasi, muwakif.email',
+		// 									['username' => $username],
+		// 									['muwakif'=>'user.id = muwakif.user_id'])->row_array();
+		// $to_email   = $user['email'];
+		// $message	= 'KODE AKTIVASI ANDA '.$user['kode_aktivasi'].'';
+		// // send email
+		// $this->email->from('ahmaddjunaedi92@gmail.com','Ahmad Djunaedi');
+		// $this->email->to($to_email);
+		// $this->email->subject('Aktivasi User');
+		// $this->email->message($message);
 
-		if ( ! $this->email->send())
-		{
-			$response['code']	 = 400;
-			$response['error']   = TRUE;
-			$response['message'] = $this->email->print_debugger();
-		} else {
+		// if ( ! $this->email->send())
+		// {
+		// 	$response['code']	 = 400;
+		// 	$response['error']   = TRUE;
+		// 	$response['message'] = $this->email->print_debugger();
+		// } else {
 			if ($this->db->trans_status() === FALSE) {
 	            $this->db->trans_rollback();
 	            
@@ -167,7 +174,7 @@ class Api extends CI_Controller {
 				$response['error']		= FALSE;
 				$response['message']	= 'Success registered!';
 	        }
-		}
+		// }
 
 		echo json_encode($response);
 	}
@@ -187,7 +194,40 @@ class Api extends CI_Controller {
 	/*
 	* TRANSAKSI
 	*/
-	public function get_transaksi($id)
+	public function get_all_transaksi()
+	{
+		$transaksi = $this->global->get('transaksi');
+		if($transaksi->num_rows() > 0) {
+			$response['code']		= 200;
+			$response['error']		= FALSE;
+			$response['transaksi']	= $transaksi->result_array();
+		} else {
+			$response['code']		= 404;
+			$response['error']		= TRUE;
+			$response['message']	= 'Trasaction not found!';			
+		}
+
+		echo json_encode($response);
+	}
+
+	public function get_transaksi($muwakif_id)
+	{
+		$transaksi = $this->global->getCond('transaksi','*',['muwakif_id'=>$muwakif_id]);
+		if($transaksi->num_rows() > 0) {
+			$response['code']		= 200;
+			$response['error']		= FALSE;
+			$response['transaksi']	= $transaksi->result_array();
+		} else {
+			$response['code']		= 404;
+			$response['error']		= TRUE;
+			$response['message']	= 'Trasaction not found!';			
+		}
+
+		echo json_encode($response);
+
+	}
+
+	public function get_transaksi_by_id($id)
 	{
 		$transaksi = $this->global->getCond('transaksi', '*',['id'=>$id]);
 		if($transaksi->num_rows() > 0) {
@@ -274,7 +314,7 @@ class Api extends CI_Controller {
 	{
 		$id 	= $this->input->post('id');
 		$flag 	= $this->input->post('flag');
-		if($flag == 'berhasil') {
+		if($flag == '3') {
 			$data_transaksi = [
 				'status'	=> 3,
 			];
@@ -311,7 +351,7 @@ class Api extends CI_Controller {
 			'created_at'	=> date('Y-m-d H:i:s'),
 		];
 
-		$this->global->create('total_wakaf', $data_total_wakaf);
+		$this->global->update('total_wakaf', $data_total_wakaf, ['id'=>1]);
 
 		if($update == FALSE) {
 			$response['code'] 	= 204;
@@ -326,10 +366,14 @@ class Api extends CI_Controller {
 		echo json_encode($response);
 	}
 
+	// lpw berita
 	public function add_lpw_berita()
 	{
 		$user_id = $this->session->id;
-		$pegawai = $this->global->getCond('pegawai','*',['user_id'=>$user_id])->row_array(); 
+		$pegawai = $this->global->getCond('pegawai','*',['user_id'=>$user_id])->row_array();
+		
+		$this->db->trans_begin();
+				
 		$data_lpw = [
 			'pegawai_id'	=> $pegawai['id'],
 			'nomor_laporan'	=> $this->input->post('nomor_laporan'),
@@ -341,19 +385,58 @@ class Api extends CI_Controller {
 		$data_berita = [
 			'lpw_id'		=> $lpw_id,
 			'judul_berita'	=> $this->input->post('judul_berita'),
-			'isi_berita'	=> $this->input->post('isi'),
+			'isi_berita'	=> $this->input->post('isi_berita'),
 			'tanggal'		=> $this->input->post('tanggal'),
 		];
 
-		$this->global->craete('berita', $data_berita);
+		$this->global->create('berita', $data_berita);
 
-		$response['code']		= 200;
-		$response['error']		= FALSE;
-		$response['message']	= 'Success add laporan pemberdayaan wakaf dan berita!';
+		if ($this->db->trans_status() === FALSE) {
+            $this->db->trans_rollback();
+            
+            $response['code']		= 501;
+			$response['error']		= FALSE;
+			$response['message']	= 'Gagal menambahkan laporan pemberdayaan wakaf dan berita!';
+        } else {
+        	$this->db->trans_commit();
+			
+			$response['code']		= 200;
+			$response['error']		= FALSE;
+			$response['message']	= 'Berhasil menambahkan laporan pemberdayaan wakaf dan berita!';
+			
+        }
 
 		echo json_encode($response);
 	}
+
+	public function get_berita_by_id($id)
+	{
+		$berita = $this->global->getCond('berita', '*',['id'=>$id]);
+		if($berita->num_rows() > 0) {
+			$response['code']		= 200;
+			$response['error']		= FALSE;
+			$response['berita']		= $berita->row_array();
+		} else {
+			$response['code']		= 404;
+			$response['error']		= TRUE;
+			$response['message']	= 'Berita not found!';			
+		}
+
+		echo json_encode($response);				
+	}
 	/* end TRANSAKSI */
+
+	public function generate_password()
+	{
+		$password = 'admin123';
+		$options = [
+		    'cost' => 11,
+		    'salt' => mcrypt_create_iv(22, MCRYPT_DEV_URANDOM),
+		];
+		$password_hash = password_hash($password, PASSWORD_BCRYPT, $options);
+		echo $password_hash;
+	}
+
 }
 
 /* End of file Api.php */
